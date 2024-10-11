@@ -9,3 +9,12 @@ int main(){
 
     }
 }
+
+/*
+Things that I will need to implement:
+
+pwd, echo (with both one or multiple arguments), cd, 
+export, execution with environment variables
+jobs, kill 
+
+*/

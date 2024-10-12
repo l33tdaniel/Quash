@@ -18,10 +18,6 @@
 #define CMD_KILL   10
 #define CMD_CD     11
 
-int main() {
-    readInput();
-    return 0;
-}
 
 int getCommandIndex(char *cmd) {
     if (strcmp(cmd, "ls")    == 0)  return CMD_LS;
@@ -241,4 +237,9 @@ void readInput(){
 
         *****/
     }
+}
+
+int main() {
+    readInput();
+    return 0;
 }

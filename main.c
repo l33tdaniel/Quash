@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <stdbool.h>
 #include <sys/wait.h>
@@ -17,6 +18,7 @@
 #define CMD_JOBS    9
 #define CMD_KILL   10
 #define CMD_CD     11
+#define CMD_PWD    12
 
 
 int getCommandIndex(char *cmd) {
@@ -31,6 +33,7 @@ int getCommandIndex(char *cmd) {
     if (strcmp(cmd, "jobs")  == 0)  return CMD_JOBS;
     if (strcmp(cmd, "kill")  == 0)  return CMD_KILL;
     if (strcmp(cmd, "cd")    == 0)  return CMD_CD;
+    if (strcmp(cmd, "pwd")   == 0)  return CMD_PWD;
 
     if (cmd[0] == '$') return CMD_ENV_VAR;  // Check for environment variable commands
     return 0; // Unknown command
@@ -202,6 +205,16 @@ void parseThrough(char input[1024], char *args[100]){
                 printf("Value of %s: %s\n", args[0], env_var);
             } else {
                 printf("%s: No such environment variable\n", args[0]);
+            }
+            break;
+        }
+        case CMD_PWD: {
+
+            char buf[1024];
+            if(getcwd(buf, sizeof(buf)) != NULL){
+                printf("%s\n", buf);
+            }else {
+            perror("getcwd() error");
             }
             break;
         }

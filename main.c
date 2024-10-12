@@ -227,8 +227,17 @@ void readInput(){
         if (fgets(input, 1024, stdin) == NULL) {
             break;  // Handle Ctrl+D (EOF)
         }
-        // Remove newline character
-        input[strcspn(input, "\n")] = 0;
+        input[strcspn(input, "\n")] = 0; // Remove newline character
         parseThrough(input, args);
+        /*****
+         * Examples to try:
+
+          echo hi > temp.txt // What is this really doing? Well, if we look at ">" as a command with temp.txt being the file we write to,
+          what we can do is make a pipe from the output of echo and put into this. This makes everything a lot easier...
+
+          So a goal that we can do next is utilize stuff like "has append" etc and then try and see if we can use pipes to make valid output
+
+
+        *****/
     }
 }

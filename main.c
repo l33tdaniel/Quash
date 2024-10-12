@@ -24,16 +24,16 @@ int main() {
 }
 
 int getCommandIndex(char *cmd) {
-    if (strcmp(cmd, "ls")    == 0)    return CMD_LS;
-    if (strcmp(cmd, "echo")  == 0)    return CMD_ECHO;
-    if (strcmp(cmd, "help")  == 0)    return CMD_HELP;
-    if (strcmp(cmd, "exit")  == 0)    return CMD_EXIT;
-    if (strcmp(cmd, "cat")   == 0)    return CMD_CAT;
-    if (strcmp(cmd, "grep")  == 0)    return CMD_GREP;
-    if (strcmp(cmd, "export")== 0)    return CMD_EXPORT;
-    if (strcmp(cmd, "jobs")  == 0)    return CMD_JOBS;
-    if (strcmp(cmd, "kill")  == 0)    return CMD_KILL;
-    if (strcmp(cmd, "cd")    == 0)    return CMD_CD;
+    if (strcmp(cmd, "ls")    == 0)  return CMD_LS;
+    if (strcmp(cmd, "echo")  == 0)  return CMD_ECHO;
+    if (strcmp(cmd, "help")  == 0)  return CMD_HELP;
+    if (strcmp(cmd, "exit")  == 0)  return CMD_EXIT;
+    if (strcmp(cmd, "cat")   == 0)  return CMD_CAT;
+    if (strcmp(cmd, "grep")  == 0)  return CMD_GREP;
+    if (strcmp(cmd, "export")== 0)  return CMD_EXPORT;
+    if (strcmp(cmd, "jobs")  == 0)  return CMD_JOBS;
+    if (strcmp(cmd, "kill")  == 0)  return CMD_KILL;
+    if (strcmp(cmd, "cd")    == 0)  return CMD_CD;
 
     if (cmd[0] == '$') return CMD_ENV_VAR;  // Check for environment variable commands
     return 0; // Unknown command
@@ -98,35 +98,44 @@ void parseThrough(char input[1024], char *args[100]){
     }
     
     bool hasPipe = pipeCheck(args);
+    bool hasAppend = appendCheck(args);
+    bool hasInputRedirect = inputRedirectionCheck(args);
+    bool hasOutputRedirect = outputRedirectionCheck(args);
+
 
     // Get the command index
     int cmdIndex = getCommandIndex(args[0]);
 
     switch (cmdIndex) {
         case CMD_LS: {
-            DIR *dir;
-            struct dirent *entry;
+        DIR *dir;
+        struct dirent *entry;
 
-            // Open the current directory or specified directory
-            if (args[1] == NULL) {
-                dir = opendir(".");  // Use current directory
-            } else {
-                dir = opendir(args[1]);  // Use specified directory
-            }
-
-            if (dir == NULL) {
-                perror("ls");  // Print error if the directory cannot be opened
-                return;
-            }
-
-            // Read and print the directory entries
-            while ((entry = readdir(dir)) != NULL) {
-                printf("%s\n", entry->d_name);
-            }
-
-            closedir(dir);  // Close the directory
-            break;
+        // Open the current directory or specified directory
+        if (args[1] == NULL) {
+            dir = opendir(".");  // Use current directory
+        } else {
+            dir = opendir(args[1]);  // Use specified directory
         }
+
+        if (dir == NULL) {
+            perror("ls");  // Print error if the directory cannot be opened
+            return;
+        }
+
+        // Read and print the directory entries on one line, excluding . and ..
+        while ((entry = readdir(dir)) != NULL) {
+            // Skip the current directory (.) and parent directory (..)
+            if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+                printf("%s ", entry->d_name);  // Print each entry followed by a space
+            }
+        }
+        
+        printf("\n");  // Print a newline after listing all entries
+
+        closedir(dir);  // Close the directory
+        break;
+    }
 
         case CMD_ECHO: {
             // Echo all the arguments after "echo"
@@ -175,7 +184,7 @@ void parseThrough(char input[1024], char *args[100]){
             exit(0);  // Return code 0 for normal exit
             break;
         }
-        
+
         case CMD_ENV_VAR: {
             // Remove the '$' symbol and get the environment variable name
             char *env_var = getenv(args[0] + 1);  // Skip the '$' symbol
@@ -200,6 +209,10 @@ void parseThrough(char input[1024], char *args[100]){
                 }
             }
             break;
+        }
+    
+        case 0: {
+            printf("Unknown command");
         }
     }
 }

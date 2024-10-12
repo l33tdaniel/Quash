@@ -128,17 +128,19 @@ void parseThrough(char input[1024], char *args[100]){
             break;
         }
 
-        case CMD_ECHO:
+        case CMD_ECHO: {
             // Echo all the arguments after "echo"
             for (int j = 1; args[j] != NULL; j++) {
                 printf("%s ", args[j]);
             }
             printf("\n");  // Add a new line at the end
             break;
+        }
 
-        case CMD_HELP:
+        case CMD_HELP: {
             printf("User is asking for help- We hope you're enjoying the program!\n");
             break;
+        }
 
         case CMD_CAT: {
             pid_t pid, wpid;
@@ -163,15 +165,17 @@ void parseThrough(char input[1024], char *args[100]){
             break;
         }
 
-        case CMD_GREP:
+        case CMD_GREP: {
             // action for grep
             break;
+        }
 
-        case CMD_EXIT:
+        case CMD_EXIT: {
             printf("Goodbye!\n");
             exit(0);  // Return code 0 for normal exit
             break;
-
+        }
+        
         case CMD_ENV_VAR: {
             // Remove the '$' symbol and get the environment variable name
             char *env_var = getenv(args[0] + 1);  // Skip the '$' symbol

@@ -28,6 +28,7 @@ int getCommandIndex(char *cmd) {
     if (strcmp(cmd, "echo")  == 0)  return CMD_ECHO;
     if (strcmp(cmd, "help")  == 0)  return CMD_HELP;
     if (strcmp(cmd, "exit")  == 0)  return CMD_EXIT;
+    if (strcmp(cmd, "quit")  == 0)  return CMD_EXIT;
     if (strcmp(cmd, "cat")   == 0)  return CMD_CAT;
     if (strcmp(cmd, "grep")  == 0)  return CMD_GREP;
     if (strcmp(cmd, "export")== 0)  return CMD_EXPORT;

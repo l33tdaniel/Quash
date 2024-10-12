@@ -1,22 +1,22 @@
-/*
-Daniel Neugent and Brett Balquist EECS 678 QUASH
-
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
 #include <sys/wait.h>
+#include <dirent.h>  // Include for directory handling
 
-#define CMD_LS     1
-#define CMD_ECHO   2
-#define CMD_HELP   3
-#define CMD_EXIT   4
-#define CMD_CAT    5
-#define CMD_GREP   6
+#define CMD_LS      1
+#define CMD_ECHO    2
+#define CMD_HELP    3
+#define CMD_EXIT    4
+#define CMD_CAT     5
+#define CMD_GREP    6
 #define CMD_ENV_VAR 7
+#define CMD_EXPORT  8
+#define CMD_JOBS    9
+#define CMD_KILL   10
+#define CMD_CD     11
 
 int main() {
     readInput();
@@ -30,6 +30,11 @@ int getCommandIndex(char *cmd) {
     if (strcmp(cmd, "exit")  == 0)    return CMD_EXIT;
     if (strcmp(cmd, "cat")   == 0)    return CMD_CAT;
     if (strcmp(cmd, "grep")  == 0)    return CMD_GREP;
+    if (strcmp(cmd, "export")== 0)    return CMD_EXPORT;
+    if (strcmp(cmd, "jobs")  == 0)    return CMD_JOBS;
+    if (strcmp(cmd, "kill")  == 0)    return CMD_KILL;
+    if (strcmp(cmd, "cd")    == 0)    return CMD_CD;
+
     if (cmd[0] == '$') return CMD_ENV_VAR;  // Check for environment variable commands
     return 0; // Unknown command
 }
@@ -38,33 +43,33 @@ bool outputRedirectionCheck(char *args[100]) {
     int i = 0;
     while (args[i] != NULL) {
         if (strcmp(args[i], ">") == 0) {
-            return true;  // Pipe found
+            return true;  // Output redirection found
         }
         i++;
     }
-    return false;  // No pipe found
+    return false;  // No output redirection found
 }
 
 bool appendCheck(char *args[100]) {
     int i = 0;
     while (args[i] != NULL) {
         if (strcmp(args[i], ">>") == 0) {
-            return true;  // Pipe found
+            return true;  // Append found
         }
         i++;
     }
-    return false;  // No pipe found
+    return false;  // No append found
 }
 
 bool inputRedirectionCheck(char *args[100]){
     int i = 0;
     while (args[i] != NULL) {
         if (strcmp(args[i], "<") == 0) {
-            return true;  // Pipe found
+            return true;  // Input redirection found
         }
         i++;
     }
-    return false;  // No pipe found
+    return false;  // No input redirection found
 }
 
 bool pipeCheck(char *args[100]) {
@@ -79,7 +84,7 @@ bool pipeCheck(char *args[100]) {
 }
 
 void parseThrough(char input[1024], char *args[100]){
- // Tokenize the input
+    // Tokenize the input
     char *token = strtok(input, " ");
     int i = 0;
     while (token != NULL) {
@@ -89,17 +94,39 @@ void parseThrough(char input[1024], char *args[100]){
     args[i] = NULL;  // Null-terminate the argument array
     
     if (args[0] == NULL) {
-        return;
+        return;  // No command entered
     }
+    
     bool hasPipe = pipeCheck(args);
 
     // Get the command index
     int cmdIndex = getCommandIndex(args[0]);
 
     switch (cmdIndex) {
-        case CMD_LS:
-            printf("you typed ls\n");
+        case CMD_LS: {
+            DIR *dir;
+            struct dirent *entry;
+
+            // Open the current directory or specified directory
+            if (args[1] == NULL) {
+                dir = opendir(".");  // Use current directory
+            } else {
+                dir = opendir(args[1]);  // Use specified directory
+            }
+
+            if (dir == NULL) {
+                perror("ls");  // Print error if the directory cannot be opened
+                return;
+            }
+
+            // Read and print the directory entries
+            while ((entry = readdir(dir)) != NULL) {
+                printf("%s\n", entry->d_name);
+            }
+
+            closedir(dir);  // Close the directory
             break;
+        }
 
         case CMD_ECHO:
             // Echo all the arguments after "echo"
@@ -142,7 +169,7 @@ void parseThrough(char input[1024], char *args[100]){
 
         case CMD_EXIT:
             printf("Goodbye!\n");
-            exit(1);
+            exit(0);  // Return code 0 for normal exit
             break;
 
         case CMD_ENV_VAR: {
@@ -155,18 +182,27 @@ void parseThrough(char input[1024], char *args[100]){
             }
             break;
         }
+
+        case CMD_CD: {
+            if (args[1] == NULL) {
+                // If no argument is provided, change to the home directory
+                if (chdir(getenv("HOME")) != 0) {
+                    perror("cd");
+                }
+            } else {
+                // Attempt to change to the specified directory
+                if (chdir(args[1]) != 0) {
+                    perror("cd");
+                }
+            }
+            break;
+        }
     }
 }
 
 void readInput(){
-
     char input[1024];
     char *args[100];
-    // gotta have some sort of order of operations here
-    bool isPipe = pipeCheck(args); 
-    bool isOutputRedirected = outputRedirectionCheck(args);
-    bool isInputRedirected = inputRedirectionCheck(args);
-    bool isAppending = appendCheck(args);
 
     while (1) {
         printf("[QUASH]$ ");

@@ -30,14 +30,35 @@ int main() {
         if (args[0] == NULL) {
             continue;
         }
-        
-        // Print all the arguments
-        printf("Arguments entered: \n");
-        for (int j = 0; args[j] != NULL; j++) {
-            printf("args[%d]: %s\n", j, args[j]);
-        }
+
         if (strcmp(args[0], "ls") == 0) {
-            printf("yes ls!\n");
+            printf("you typed ls\n");
+        }
+
+        else if (strcmp(args[0], "echo") == 0) {
+            // Echo all the arguments after "echo"
+            for (int j = 1; args[j] != NULL; j++) {
+                printf("%s ", args[j]);
+            }
+            printf("\n");  // Add a new line at the end
+        }
+        else if (strcmp(args[0], "help") == 0) {
+            printf("User is asking for help- We hope you're enjoying the program!\n");
+        }
+        else if (strcmp(args[0], "exit") == 0) {
+            printf("Goodbye!\n");
+            return 0;
+        }
+        
+        else if (args[0][0] == '$') {
+            // Remove the '$' symbol and get the environment variable name
+            char *env_var = getenv(args[0] + 1);  // Skip the '$' symbol
+            
+            if (env_var != NULL) {
+                printf("Value of %s: %s\n", args[0], env_var);
+            } else {
+                printf("%s: No such environment variable\n", args[0]);
+            }
         }
     }
     

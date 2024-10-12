@@ -214,6 +214,7 @@ void parseThrough(char input[1024], char *args[100]){
     }
 }
 
+/* we could declare this in a header file and move main to the top of this file if necessary */
 void readInput(){
     char input[1024];
     char *args[100];
@@ -239,6 +240,7 @@ void readInput(){
     }
 }
 
+/* Main is placed at the bottom to ensure that readInput is recoginzed and not assigned an implicit type and return an Int */
 int main() {
     readInput();
     return 0;

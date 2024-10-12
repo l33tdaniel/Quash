@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <stdbool.h>
 #include <sys/wait.h>
@@ -17,23 +18,22 @@
 #define CMD_JOBS    9
 #define CMD_KILL   10
 #define CMD_CD     11
+#define CMD_PWD    12
 
-int main() {
-    readInput();
-    return 0;
-}
 
 int getCommandIndex(char *cmd) {
     if (strcmp(cmd, "ls")    == 0)  return CMD_LS;
     if (strcmp(cmd, "echo")  == 0)  return CMD_ECHO;
     if (strcmp(cmd, "help")  == 0)  return CMD_HELP;
     if (strcmp(cmd, "exit")  == 0)  return CMD_EXIT;
+    if (strcmp(cmd, "quit")  == 0)  return CMD_EXIT;
     if (strcmp(cmd, "cat")   == 0)  return CMD_CAT;
     if (strcmp(cmd, "grep")  == 0)  return CMD_GREP;
     if (strcmp(cmd, "export")== 0)  return CMD_EXPORT;
     if (strcmp(cmd, "jobs")  == 0)  return CMD_JOBS;
     if (strcmp(cmd, "kill")  == 0)  return CMD_KILL;
     if (strcmp(cmd, "cd")    == 0)  return CMD_CD;
+    if (strcmp(cmd, "pwd")   == 0)  return CMD_PWD;
 
     if (cmd[0] == '$') return CMD_ENV_VAR;  // Check for environment variable commands
     return 0; // Unknown command
@@ -140,7 +140,20 @@ void parseThrough(char input[1024], char *args[100]){
         case CMD_ECHO: {
             // Echo all the arguments after "echo"
             for (int j = 1; args[j] != NULL; j++) {
+                if(*args[j] == '$'){
+                    while (*args[j] != ' ') {
+                        char *env_var = getenv(args[j] + 1);  // Skip the '$' symbol
+                        if (env_var != NULL) {
+                            printf("%s ", env_var);
+                        } else {
+                            printf("%s: No such environment variable ", args[0]);
+                        }
+                        break;
+                    }
+                }
+                else {
                 printf("%s ", args[j]);
+                }
             }
             printf("\n");  // Add a new line at the end
             break;
@@ -195,6 +208,16 @@ void parseThrough(char input[1024], char *args[100]){
             }
             break;
         }
+        case CMD_PWD: {
+
+            char buf[1024];
+            if(getcwd(buf, sizeof(buf)) != NULL){
+                printf("%s\n", buf);
+            }else {
+            perror("getcwd() error");
+            }
+            break;
+        }
 
         case CMD_CD: {
             if (args[1] == NULL) {
@@ -212,11 +235,12 @@ void parseThrough(char input[1024], char *args[100]){
         }
     
         case 0: {
-            printf("Unknown command");
+            printf("Unknown command\n");
         }
     }
 }
 
+/* we could declare this in a header file and move main to the top of this file if necessary */
 void readInput(){
     char input[1024];
     char *args[100];
@@ -240,4 +264,10 @@ void readInput(){
 
         *****/
     }
+}
+
+/* Main is placed at the bottom to ensure that readInput is recoginzed and not assigned an implicit type and return an Int */
+int main() {
+    readInput();
+    return 0;
 }

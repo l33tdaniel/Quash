@@ -5,7 +5,7 @@ CCFLAGS = -Wall -std=gnu11
 
 all: quash 
 
-quash: quash.c
+quash: main.c
 	gcc $(CCFAGS) -g -o $@ $^ 
 
 clean:

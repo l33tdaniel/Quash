@@ -137,6 +137,17 @@ void parseThrough(char input[1024], char *args[100]){
         case CMD_ECHO: {
             // Echo all the arguments after "echo"
             for (int j = 1; args[j] != NULL; j++) {
+                if(*args[j] == '$'){
+                    while (*args[j] != ' ') {
+                        char *env_var = getenv(args[j] + 1);  // Skip the '$' symbol
+                        if (env_var != NULL) {
+                            printf("%s", env_var);
+                        } else {
+                            printf("%s: No such environment variable ", args[0]);
+                        }
+                        break;
+                    }
+                }
                 printf("%s ", args[j]);
             }
             printf("\n");  // Add a new line at the end
@@ -209,7 +220,7 @@ void parseThrough(char input[1024], char *args[100]){
         }
     
         case 0: {
-            printf("Unknown command");
+            printf("Unknown command\n");
         }
     }
 }

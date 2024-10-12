@@ -141,14 +141,16 @@ void parseThrough(char input[1024], char *args[100]){
                     while (*args[j] != ' ') {
                         char *env_var = getenv(args[j] + 1);  // Skip the '$' symbol
                         if (env_var != NULL) {
-                            printf("%s", env_var);
+                            printf("%s ", env_var);
                         } else {
                             printf("%s: No such environment variable ", args[0]);
                         }
                         break;
                     }
                 }
+                else {
                 printf("%s ", args[j]);
+                }
             }
             printf("\n");  // Add a new line at the end
             break;

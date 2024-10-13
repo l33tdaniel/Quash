@@ -7,6 +7,9 @@
 #include <sys/wait.h>
 #include <dirent.h>  // Include for directory handling
 
+//Included to define grep location
+#define GREP_EXEC  "/bin/grep"
+
 #define CMD_LS      1
 #define CMD_ECHO    2
 #define CMD_HELP    3
@@ -188,10 +191,38 @@ void parseThrough(char input[1024], char *args[100]){
         }
 
         case CMD_GREP: {
-            // action for grep
+            pid_t pid;
+
+            /* Make sure that they have enough parameters before executing */
+            if (args[1] == NULL) {
+                printf("Usage: grep [OPTION]... patterns [FILE]... \n");
+                break;
+            }            
+
+            /* Fork to create a child process that runs eexec */
+            pid = fork();
+            if (pid == -1){
+                //If the fork errors
+                perror("fork");
+                exit(0);
+            }
+
+            if (pid == 0){
+                /* Inside of the child process */
+                execvp("grep", args);
+                perror("execvp");
+            }else{
+                /* Inside of the parent */
+                int status;
+                /* Here we wait for the child to finish */
+                /* While child processes exist this value is greater than one */
+                /* once it exits pid goes to -1 */
+                while((pid = wait(&status)) > 0);
+            }
+
+            /* Break after the parent has waited fro the child or they have improper input */
             break;
         }
-
         case CMD_EXIT: {
             printf("Goodbye!\n");
             exit(0);  // Return code 0 for normal exit

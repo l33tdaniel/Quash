@@ -220,6 +220,7 @@ void parseThrough(char input[1024], char *args[100]){
                 while((pid = wait(&status)) > 0);
             }
 
+            /* Break after the parent has waited fro the child or they have improper input */
             break;
         }
         case CMD_EXIT: {

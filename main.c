@@ -6,6 +6,9 @@
 #include <stdbool.h>
 #include <sys/wait.h>
 #include <dirent.h>  // Include for directory handling
+#include <fcntl.h>    // For file control options
+#include <sys/types.h> // For pid_t and system call data types
+#include <sys/stat.h>
 
 //Included to define grep location
 #define GREP_EXEC  "/bin/grep"
@@ -100,10 +103,215 @@ void parseThrough(char input[1024], char *args[100]){
         return;  // No command entered
     }
     
-    bool hasPipe = pipeCheck(args);
-    bool hasAppend = appendCheck(args);
-    bool hasInputRedirect = inputRedirectionCheck(args);
-    bool hasOutputRedirect = outputRedirectionCheck(args);
+    bool hasPipe = pipeCheck(args); // |
+    bool hasAppend = appendCheck(args); // >>
+    bool hasInputRedirect = inputRedirectionCheck(args); // <
+    bool hasOutputRedirect = outputRedirectionCheck(args); // >
+    // The order of operation is append + input + output before pipes
+    // Handle output redirect > 
+    if (hasOutputRedirect) {
+        int fd;
+        int saved_stdout;  // Save original stdout
+        char *outputFile = NULL;
+
+        // Find the output file name
+        for (int j = 0; args[j] != NULL; j++) {
+            if (strcmp(args[j], ">") == 0) {
+                outputFile = args[j + 1]; // The file after '>' is the output file
+                args[j] = NULL; // Terminate the command before '>'
+                break;
+            }
+        }
+
+        if (outputFile) {
+            saved_stdout = dup(STDOUT_FILENO); // Save the original stdout
+
+            // Open the output file
+            fd = open(outputFile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (fd == -1) {
+                perror("Error opening file for output");
+                return;
+            }
+
+            // Redirect standard output to the file
+            dup2(fd, STDOUT_FILENO);  // Redirect stdout to file
+            close(fd);                // Close the file descriptor since it’s duplicated
+
+            // Fork a new process to execute the command
+            pid_t pid = fork();
+            if (pid < 0) {
+                perror("Error forking process");
+                return;  // Fork failed
+            }
+
+            if (pid == 0) {
+                // In the child process: execute the command
+                if (execvp(args[0], args) == -1) {
+                    perror("Error executing command");
+                    exit(EXIT_FAILURE); // Exit child process if exec fails
+                }
+            } else {
+                // In the parent process: wait for the child to finish (optional)
+                wait(NULL);  // You can comment this out if you don't want to wait
+            }
+
+            // Restore original stdout
+            dup2(saved_stdout, STDOUT_FILENO);  // Restore original stdout
+            close(saved_stdout);                // Close the saved stdout fd
+        }
+    }
+
+    // Handle append (>>)
+    if (hasAppend) {
+        int fd;
+        int saved_stdout;  // Save original stdout
+        char *outputFile = NULL;
+
+        // Find the output file name
+        for (int j = 0; args[j] != NULL; j++) {
+            if (strcmp(args[j], ">>") == 0) {
+                outputFile = args[j + 1]; // The file after '>' is the output file
+                args[j] = NULL; // Terminate the command before '>'
+                break;
+            }
+        }
+
+        if (outputFile) {
+            saved_stdout = dup(STDOUT_FILENO); // Save the original stdout
+
+            // Open the output file
+            fd = open(outputFile, O_WRONLY | O_CREAT | O_APPEND, 0644);
+            if (fd == -1) {
+                perror("Error opening file for output");
+                return;
+            }
+
+            // Redirect standard output to the file
+            dup2(fd, STDOUT_FILENO);  // Redirect stdout to file
+            close(fd);                // Close the file descriptor since it’s duplicated
+
+            // Fork a new process to execute the command
+            pid_t pid = fork();
+            if (pid < 0) {
+                perror("Error forking process");
+                return;  // Fork failed
+            }
+
+            if (pid == 0) {
+                // In the child process: execute the command
+                if (execvp(args[0], args) == -1) {
+                    perror("Error executing command");
+                    exit(EXIT_FAILURE); // Exit child process if exec fails
+                }
+            } else {
+                // In the parent process: wait for the child to finish (optional)
+                wait(NULL);  // You can comment this out if you don't want to wait
+            }
+
+            // Restore original stdout
+            dup2(saved_stdout, STDOUT_FILENO);  // Restore original stdout
+            close(saved_stdout);                // Close the saved stdout fd
+        }
+    }
+
+    // Handle input redirection (<)
+    if (hasInputRedirect) {
+        int fd;
+        char *inputFile = NULL;
+
+        // Find the input file name
+        for (int j = 0; args[j] != NULL; j++) {
+            if (strcmp(args[j], "<") == 0) {
+                inputFile = args[j + 1]; // The file after '<' is the input file
+                args[j] = NULL; // Terminate the command before '<'
+                break;
+            }
+        }
+
+        if (inputFile) {
+            fd = open(inputFile, O_RDONLY);
+            if (fd == -1) {
+                perror("Error opening input file");
+                return;
+            }
+            // Redirect standard input from the file
+            dup2(fd, STDIN_FILENO);
+            close(fd);
+        }
+    }
+
+    // Handle pipes (|)
+    if (hasPipe) {
+        // Find the position of the pipe
+        int pipePos = -1;
+        for (int j = 0; args[j] != NULL; j++) {
+            if (strcmp(args[j], "|") == 0) {
+                pipePos = j;
+                break;
+            }
+        }
+
+        if (pipePos != -1) {
+            args[pipePos] = NULL; // Split the command at the pipe
+
+            // Prepare for piping
+            int pipefd[2];
+            if (pipe(pipefd) == -1) {
+                perror("Error creating pipe");
+                return;
+            }
+
+            pid_t pid1 = fork();
+            if (pid1 == 0) {
+                // First child: set up pipe output to stdout
+                close(pipefd[0]); // Close the read end of the pipe
+                dup2(pipefd[1], STDOUT_FILENO); // Redirect stdout to pipe
+                close(pipefd[1]); // Close write end of the pipe
+
+                // Execute the first command (before the pipe)
+                if (execvp(args[0], args) == -1) {
+                    perror("Error executing first command in pipe");
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            pid_t pid2 = fork();
+            if (pid2 == 0) {
+                // Second child: set up pipe input to stdin
+                close(pipefd[1]); // Close the write end of the pipe
+                dup2(pipefd[0], STDIN_FILENO); // Redirect stdin from pipe
+                close(pipefd[0]); // Close read end of the pipe
+
+                // Execute the second command (after the pipe)
+                if (execvp(args[pipePos + 1], &args[pipePos + 1]) == -1) {
+                    perror("Error executing second command in pipe");
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            // Parent process: close pipe and wait for children
+            close(pipefd[0]);
+            close(pipefd[1]);
+            waitpid(pid1, NULL, 0);
+            waitpid(pid2, NULL, 0);
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     // Get the command index
@@ -223,6 +431,7 @@ void parseThrough(char input[1024], char *args[100]){
             /* Break after the parent has waited fro the child or they have improper input */
             break;
         }
+        
         case CMD_EXIT: {
             printf("Goodbye!\n");
             exit(0);  // Return code 0 for normal exit
@@ -239,6 +448,7 @@ void parseThrough(char input[1024], char *args[100]){
             }
             break;
         }
+        
         case CMD_PWD: {
 
             char buf[1024];
@@ -264,7 +474,21 @@ void parseThrough(char input[1024], char *args[100]){
             }
             break;
         }
-    
+
+        case CMD_JOBS: {
+
+        }
+
+        case CMD_EXPORT: {
+
+        }
+
+        case CMD_KILL: {
+
+        }
+
+
+
         case 0: {
             printf("Unknown command\n");
         }

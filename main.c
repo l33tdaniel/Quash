@@ -216,28 +216,7 @@ void parseThrough(char input[1024], char *args[100]){
 
     // Handle input redirection (<)
     if (hasInputRedirect) {
-        int fd;
-        char *inputFile = NULL;
 
-        // Find the input file name
-        for (int j = 0; args[j] != NULL; j++) {
-            if (strcmp(args[j], "<") == 0) {
-                inputFile = args[j + 1]; // The file after '<' is the input file
-                args[j] = NULL; // Terminate the command before '<'
-                break;
-            }
-        }
-
-        if (inputFile) {
-            fd = open(inputFile, O_RDONLY);
-            if (fd == -1) {
-                perror("Error opening input file");
-                return;
-            }
-            // Redirect standard input from the file
-            dup2(fd, STDIN_FILENO);
-            close(fd);
-        }
     }
 
     // Handle pipes (|)
@@ -262,6 +241,11 @@ void parseThrough(char input[1024], char *args[100]){
             }
 
             pid_t pid1 = fork();
+            if (pid1 < 0) {
+                perror("Fork failed");
+                return;
+            }
+            
             if (pid1 == 0) {
                 // First child: set up pipe output to stdout
                 close(pipefd[0]); // Close the read end of the pipe
@@ -276,6 +260,11 @@ void parseThrough(char input[1024], char *args[100]){
             }
 
             pid_t pid2 = fork();
+            if (pid2 < 0) {
+                perror("Fork failed");
+                return;
+            }
+            
             if (pid2 == 0) {
                 // Second child: set up pipe input to stdin
                 close(pipefd[1]); // Close the write end of the pipe
@@ -509,13 +498,15 @@ void readInput(){
         input[strcspn(input, "\n")] = 0; // Remove newline character
         parseThrough(input, args);
         /*****
-         * Examples to try:
+        
+         * How will we handle things such as multi string inputs to echo for example?
 
-          echo hi > temp.txt // What is this really doing? Well, if we look at ">" as a command with temp.txt being the file we write to,
-          what we can do is make a pipe from the output of echo and put into this. This makes everything a lot easier...
 
-          So a goal that we can do next is utilize stuff like "has append" etc and then try and see if we can use pipes to make valid output
-
+        More test examples: 
+        sort < unsorted.txt > sorted.txt
+        echo "Appending another line." >> output.txt
+        ps aux | grep "bash"
+        cat input.txt | grep "keyword" > filtered.txt
 
         *****/
     }

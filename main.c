@@ -552,6 +552,65 @@ void parseThrough(char input[1024], char *args[100]){
         }
 
         case CMD_EXPORT: {
+            // if no path is specificed
+            if (args[1] == NULL){
+                perror("export");
+                break;
+
+            }else{
+                int export_word_count = 0;
+                int export_path_count = 0;
+                for (int i = 0; i < strlen(args[1]); ++i){
+                    if(args[1][i] == '='){
+                        break;
+                    }
+                    export_word_count++;
+                }
+                for (int i = export_word_count + 1; i < strlen(args[1]); ++i) {
+                    export_path_count++;
+                }
+                // +1 for a null terminated strings
+                char before_eq_substr[export_word_count + 1];
+                char after_eq_substr[export_path_count + 1];
+
+                //This copys the string before the = sign
+                strncpy(before_eq_substr, args[1], export_word_count);
+                before_eq_substr[export_word_count] = '\0'; // Null-terminate the string
+                                                   
+                //This copys the string before the = sign
+                strncpy(after_eq_substr, &args[1][export_word_count + 1], export_path_count);
+                after_eq_substr[export_path_count] = '\0'; // Null-terminate the string
+
+                //Check if ENV var already exists
+                if (after_eq_substr[0] == '$') {
+                    char* env_value = getenv(&after_eq_substr[1]);
+                    if (env_value != NULL) {
+                        char* expanded_value = (char*)malloc(strlen(env_value) + 1); // +1 for the null terminator
+                        if (expanded_value == NULL) {
+                            perror("malloc failed");
+                            break;
+                        } 
+                        //copy the malloc into the new array
+
+                        strcpy(expanded_value, env_value);
+                        // This sets teh value 
+                        if (setenv(before_eq_substr, expanded_value, 1) == -1) {
+                            perror("setenv failed");
+                        }
+                        //FREE THE MEMORY
+                        free(expanded_value);                    
+                    } else {  
+                        printf("Failed");
+                        break;
+                    }
+                }else{
+                    // This sets the environment variable (1 = override, 2 = don't)
+                    if (setenv(before_eq_substr, after_eq_substr, 1) == -1){
+                        perror("setenv");
+                    }
+                }
+            }
+            break;
 
         }
 

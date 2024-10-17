@@ -4,6 +4,8 @@
 #include <time.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <signal.h>
+#include <signal.h>
 #include <sys/wait.h>
 #include <dirent.h>  // Include for directory handling
 #include <fcntl.h>    // For file control options
@@ -28,6 +30,7 @@
 #define CMD_KILL   10
 #define CMD_CD     11
 #define CMD_PWD    12
+#define CMD_TASK   99
 
 struct background_task {
     pid_t pid;
@@ -113,6 +116,21 @@ bool isBackgroundTask(char *args[100]) {
 
 }
 
+void remove_back_process(pid_t pid){
+    //Function that removes background processes
+    for (int i = 0; i < job_index; ++i){
+        //this finds the task in the list of background tasks with the matching pid 
+        if (backTasks[i].pid == pid){
+           // This then removes it from the list 
+            for (int x = i; x < job_index - 1; ++x){
+                backTasks[x] = backTasks[x + 1];
+            }
+            // This then decrements the count of jobs
+            job_index--;
+            break;
+        }
+    }
+}
 void parseThrough(char input[1024], char *args[100]){
     // Tokenize the input
     char *token = strtok(input, " ");
@@ -241,11 +259,11 @@ void parseThrough(char input[1024], char *args[100]){
     }
     // Handle background Task(&)
     if (hasBackgroundTask){
-        // Remove '&' from args
         int j = 0;
         while (args[j] != NULL) {
+            //check if the background task symbol exists in string
             if (strcmp(args[j], "&") == 0) {
-                args[j] = NULL; // Remove '&' from args
+                args[j] = NULL; // Remove & from agrgs s otaht it doesn't error
                 break;
             }
             j++;
@@ -264,8 +282,9 @@ void parseThrough(char input[1024], char *args[100]){
             strncpy(backTasks[job_index].command, args[0], sizeof(backTasks[job_index].command) - 1);
             backTasks[job_index].command[sizeof(backTasks[job_index].command) - 1] = '\0'; // Null-terminate
             strcpy(backTasks[job_index].status, "Running");
-            printf("Background Task Started [%d] %d %s %s\n", job_index + 1, backTasks[job_index].pid, backTasks[job_index].status, backTasks[job_index].command);
+            printf("Background Task Started: [%d] %d %s %s\n", job_index + 1, backTasks[job_index].pid, backTasks[job_index].status, backTasks[job_index].command);
             job_index++;
+            return;
         } else {
             perror("Error forking process");
         }
@@ -277,6 +296,7 @@ void parseThrough(char input[1024], char *args[100]){
     }
 
     // Handle pipes (|)
+    // returne
     if (hasPipe) {
         // Find the position of the pipe
         int pipePos = -1;
@@ -537,13 +557,36 @@ void parseThrough(char input[1024], char *args[100]){
         }
 
         case CMD_KILL: {
+            if (args[1] == NULL){
+                printf("Specify process to kill");
+                break;
+            }else{
+                //This loops throguh the args and converts them to strings passing them to kill
+                for (int i = 1; args[i] != NULL ; ++i) {
+                    pid_t pid = atoi(args[i]);
+                
+                    if (kill(pid, SIGKILL) == -1){
+                        perror("Error killing process");
 
+                    }else{
+                        printf("Process killed \n");
+                        //call on removing backround processes
+                        remove_back_process(pid);
+
+                    }
+                }
+            }
+         break;
         }
-
-
+        case CMD_TASK: {
+            if (job_index > 0){
+            printf("hi");
+            }
+                break;
+       }
 
         case 0: {
-            printf("Unknown command\n");
+            printf("Unknown command case\n");
         }
     }
 }

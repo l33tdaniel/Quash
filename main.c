@@ -30,7 +30,6 @@
 #define CMD_KILL   10
 #define CMD_CD     11
 #define CMD_PWD    12
-#define CMD_TASK   99
 
 struct background_task {
     pid_t pid;
@@ -578,12 +577,6 @@ void parseThrough(char input[1024], char *args[100]){
             }
          break;
         }
-        case CMD_TASK: {
-            if (job_index > 0){
-            printf("hi");
-            }
-                break;
-       }
 
         case 0: {
             printf("Unknown command case\n");

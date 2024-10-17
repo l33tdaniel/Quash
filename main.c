@@ -13,6 +13,9 @@
 //Included to define grep location
 #define GREP_EXEC  "/bin/grep"
 
+//Define max number of background tasks
+#define MAX_JOBS 1024
+
 #define CMD_LS      1
 #define CMD_ECHO    2
 #define CMD_HELP    3
@@ -26,6 +29,15 @@
 #define CMD_CD     11
 #define CMD_PWD    12
 
+struct background_task {
+    pid_t pid;
+    char command[256];
+    char status[20];
+
+};
+
+struct background_task backTasks[MAX_JOBS];
+int job_index = 0;
 
 int getCommandIndex(char *cmd) {
     if (strcmp(cmd, "ls")    == 0)  return CMD_LS;
@@ -89,9 +101,22 @@ bool pipeCheck(char *args[100]) {
     return false;  // No pipe found
 }
 
+bool isBackgroundTask(char *args[100]) {
+    int i = 0;
+    while (args[i] != NULL) {
+        if (strcmp(args[i], "&") == 0) {
+            return true;  // Background task found
+        }
+        i++;
+    }
+    return false;  // No background sign found
+
+}
+
 void parseThrough(char input[1024], char *args[100]){
     // Tokenize the input
     char *token = strtok(input, " ");
+    /* char *backTasks[1024]; */
     int i = 0;
     while (token != NULL) {
         args[i++] = token;
@@ -107,6 +132,7 @@ void parseThrough(char input[1024], char *args[100]){
     bool hasAppend = appendCheck(args); // >>
     bool hasInputRedirect = inputRedirectionCheck(args); // <
     bool hasOutputRedirect = outputRedirectionCheck(args); // >
+    bool hasBackgroundTask= isBackgroundTask(args); // &
     // The order of operation is append + input + output before pipes
     // Handle output redirect > 
     if (hasOutputRedirect) {
@@ -211,6 +237,37 @@ void parseThrough(char input[1024], char *args[100]){
             // Restore original stdout
             dup2(saved_stdout, STDOUT_FILENO);  // Restore original stdout
             close(saved_stdout);                // Close the saved stdout fd
+        }
+    }
+    // Handle background Task(&)
+    if (hasBackgroundTask){
+        // Remove '&' from args
+        int j = 0;
+        while (args[j] != NULL) {
+            if (strcmp(args[j], "&") == 0) {
+                args[j] = NULL; // Remove '&' from args
+                break;
+            }
+            j++;
+        }
+
+        pid_t pid = fork();
+        if (pid == 0) {
+            // Child process: execute the command
+            if (execvp(args[0], args) == -1) {
+                perror("Error executing command");
+                exit(EXIT_FAILURE);
+            }
+        } else if (pid > 0) {
+            // Parent process: store background task information
+            backTasks[job_index].pid = pid;
+            strncpy(backTasks[job_index].command, args[0], sizeof(backTasks[job_index].command) - 1);
+            backTasks[job_index].command[sizeof(backTasks[job_index].command) - 1] = '\0'; // Null-terminate
+            strcpy(backTasks[job_index].status, "Running");
+            printf("Background Task Started [%d] %d %s %s\n", job_index + 1, backTasks[job_index].pid, backTasks[job_index].status, backTasks[job_index].command);
+            job_index++;
+        } else {
+            perror("Error forking process");
         }
     }
 
@@ -465,6 +522,13 @@ void parseThrough(char input[1024], char *args[100]){
         }
 
         case CMD_JOBS: {
+            // Length of the tasks index
+         for (int i = 0; i < job_index; i++) {
+                if (backTasks[i].pid != 0) {  // Only print tasks with a valid PID
+                    printf("[%d] %d %s %s\n", i + 1, backTasks[i].pid, backTasks[i].status, backTasks[i].command);
+                }
+            }
+         break;
 
         }
 
